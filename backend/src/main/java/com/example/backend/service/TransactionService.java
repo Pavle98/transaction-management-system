@@ -8,10 +8,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import jakarta.annotation.PostConstruct;
+
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -31,6 +35,18 @@ public class TransactionService {
 
     public TransactionService(@Value("${csv.file.path}") String csvFilePath) {
         this.csvFilePath = csvFilePath;
+    }
+
+    @PostConstruct
+    void validateCsvFile() {
+        Path path = Path.of(csvFilePath);
+        if (!Files.exists(path)) {
+            throw new IllegalStateException("CSV file not found: " + path.toAbsolutePath());
+        }
+        if (!Files.isReadable(path)) {
+            throw new IllegalStateException("CSV file is not readable: " + path.toAbsolutePath());
+        }
+        log.info("CSV file validated: {}", path.toAbsolutePath());
     }
 
     public List<Transaction> getAllTransactions() {
