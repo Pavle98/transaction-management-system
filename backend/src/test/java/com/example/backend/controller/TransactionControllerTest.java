@@ -19,8 +19,7 @@ import java.util.List;
 import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(TransactionController.class)
@@ -225,6 +224,15 @@ class TransactionControllerTest {
                                     """))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.error", is("Invalid request body")));
+        }
+
+        @Test
+        @DisplayName("returns 405 when using unsupported HTTP method")
+        void rejectsUnsupportedMethod() throws Exception {
+            mockMvc.perform(put("/transactions")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isMethodNotAllowed());
         }
     }
 }
