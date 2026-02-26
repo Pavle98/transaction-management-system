@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-const USD_FORMAT = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
+const AMOUNT_FORMAT = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 const TABLE_COLUMNS = [
   "Transaction Date",
@@ -53,7 +53,7 @@ function TransactionTableRow({ tx }: { tx: Transaction }) {
         {tx.accountHolderName}
       </TableCell>
       <TableCell className="text-right font-mono text-sm tabular-nums text-foreground">
-        {USD_FORMAT.format(tx.amount)}
+        {AMOUNT_FORMAT.format(tx.amount)}
       </TableCell>
       <TableCell>
         <StatusBadge status={tx.status} />

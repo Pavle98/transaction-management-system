@@ -1,35 +1,22 @@
 package com.example.backend.model;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-@Data
-@NoArgsConstructor
+@Getter
 @AllArgsConstructor
+@EqualsAndHashCode
+@ToString
 public class Transaction {
 
-    @NotNull(message = "Transaction date is required")
-    private LocalDate transactionDate;
-
-    @NotBlank(message = "Account number is required")
-    @Pattern(regexp = "^[^,]*$", message = "Account number must not contain commas")
-    private String accountNumber;
-
-    @NotBlank(message = "Account holder name is required")
-    @Pattern(regexp = "^[^,]*$", message = "Account holder name must not contain commas")
-    private String accountHolderName;
-
-    @NotNull(message = "Amount is required")
-    @Positive(message = "Amount must be greater than zero")
-    private BigDecimal amount;
-
-    private TransactionStatus status;
+    private final LocalDate transactionDate;
+    private final String accountNumber;
+    private final String accountHolderName;
+    private final BigDecimal amount;
+    private final TransactionStatus status;
 }

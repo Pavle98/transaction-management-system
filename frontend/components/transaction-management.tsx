@@ -80,7 +80,7 @@ export default function TransactionManagement() {
 
       {/* Main transactions card */}
       <Card className="overflow-hidden border-border bg-card shadow-sm">
-        <CardContent className="p-0">
+        <CardContent className="overflow-x-auto p-0">
           <TableContent uiState={uiState} rows={transactions} onRetry={loadTransactions} />
         </CardContent>
       </Card>

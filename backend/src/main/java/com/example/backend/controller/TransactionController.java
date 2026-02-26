@@ -1,5 +1,7 @@
 package com.example.backend.controller;
 
+import com.example.backend.dto.CreateTransactionRequest;
+import com.example.backend.dto.TransactionResponse;
 import com.example.backend.model.Transaction;
 import com.example.backend.service.TransactionService;
 import jakarta.validation.Valid;
@@ -18,12 +20,32 @@ public class TransactionController {
     private final TransactionService transactionService;
 
     @GetMapping
-    public ResponseEntity<List<Transaction>> getAllTransactions() {
-        return ResponseEntity.ok(transactionService.getAllTransactions());
+    public ResponseEntity<List<TransactionResponse>> getAllTransactions() {
+        List<TransactionResponse> responses = transactionService.getAllTransactions()
+                .stream()
+                .map(this::toResponse)
+                .toList();
+        return ResponseEntity.ok(responses);
     }
 
     @PostMapping
-    public ResponseEntity<Transaction> addTransaction(@Valid @RequestBody Transaction transaction) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(transactionService.addTransaction(transaction));
+    public ResponseEntity<TransactionResponse> addTransaction(@Valid @RequestBody CreateTransactionRequest request) {
+        Transaction transaction = transactionService.addTransaction(
+                request.transactionDate(),
+                request.accountNumber(),
+                request.accountHolderName(),
+                request.amount()
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(transaction));
+    }
+
+    private TransactionResponse toResponse(Transaction t) {
+        return new TransactionResponse(
+                t.getTransactionDate(),
+                t.getAccountNumber(),
+                t.getAccountHolderName(),
+                t.getAmount(),
+                t.getStatus()
+        );
     }
 }

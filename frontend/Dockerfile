@@ -4,7 +4,9 @@ COPY package.json package-lock.json* ./
 RUN npm install
 COPY . .
 ENV NEXT_PUBLIC_API_URL=__NEXT_PUBLIC_API_URL__
-RUN npm run build
+# Use Webpack instead of Turbopack — Turbopack attempts to download Google Fonts
+# at build time, which fails in Docker's network-restricted build environment.
+RUN npm run build -- --webpack
 
 FROM node:20-alpine
 WORKDIR /app

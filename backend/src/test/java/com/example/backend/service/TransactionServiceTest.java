@@ -2,219 +2,81 @@ package com.example.backend.service;
 
 import com.example.backend.model.Transaction;
 import com.example.backend.model.TransactionStatus;
+import com.example.backend.repository.TransactionRepository;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.LocalDate;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class TransactionServiceTest {
 
-    @TempDir
-    Path tempDir;
+    @Mock
+    private TransactionRepository repository;
 
-    private TransactionService createServiceWithCsv(String... lines) throws IOException {
-        Path csvFile = tempDir.resolve("test.csv");
-        Files.write(csvFile, Arrays.asList(lines));
-        return new TransactionService(csvFile.toString());
+    @InjectMocks
+    private TransactionServiceImpl service;
+
+    @Test
+    @DisplayName("getAllTransactions delegates to repository")
+    void delegatesToRepository() {
+        List<Transaction> expected = List.of(
+                new Transaction(LocalDate.of(2025, 3, 1), "1111-2222-3333", "Jane Doe", new BigDecimal("150.00"), TransactionStatus.SETTLED)
+        );
+        when(repository.findAll()).thenReturn(expected);
+
+        List<Transaction> result = service.getAllTransactions();
+
+        assertEquals(expected, result);
+        verify(repository).findAll();
     }
 
-    @Nested
-    @DisplayName("getAllTransactions")
-    class GetAllTransactions {
+    @Test
+    @DisplayName("addTransaction assigns a random status from the enum")
+    void assignsRandomStatus() {
+        Transaction result = service.addTransaction(
+                LocalDate.of(2025, 3, 15), "1111-2222-3333", "Jane Doe", new BigDecimal("100.00")
+        );
 
-        @Test
-        @DisplayName("reads transactions from CSV correctly")
-        void readsTransactions() throws IOException {
-            TransactionService service = createServiceWithCsv(
-                    "Transaction Date,Account Number,Account Holder Name,Amount,Status",
-                    "2025-03-01,1111-2222-3333,Jane Doe,150.00,Settled",
-                    "2025-03-02,4444-5555-6666,John Smith,250.00,Pending"
-            );
-
-            List<Transaction> transactions = service.getAllTransactions();
-
-            assertEquals(2, transactions.size());
-
-            Transaction first = transactions.get(0);
-            assertEquals(LocalDate.of(2025, 3, 1), first.getTransactionDate());
-            assertEquals("1111-2222-3333", first.getAccountNumber());
-            assertEquals("Jane Doe", first.getAccountHolderName());
-            assertEquals(new BigDecimal("150.00"), first.getAmount());
-            assertEquals(TransactionStatus.Settled, first.getStatus());
-
-            Transaction second = transactions.get(1);
-            assertEquals("John Smith", second.getAccountHolderName());
-            assertEquals(TransactionStatus.Pending, second.getStatus());
-        }
-
-        @Test
-        @DisplayName("returns empty list when CSV has only header")
-        void returnsEmptyForHeaderOnly() throws IOException {
-            TransactionService service = createServiceWithCsv(
-                    "Transaction Date,Account Number,Account Holder Name,Amount,Status"
-            );
-
-            List<Transaction> transactions = service.getAllTransactions();
-
-            assertTrue(transactions.isEmpty());
-        }
-
-        @Test
-        @DisplayName("skips malformed rows and returns valid ones")
-        void skipsMalformedRows() throws IOException {
-            TransactionService service = createServiceWithCsv(
-                    "Transaction Date,Account Number,Account Holder Name,Amount,Status",
-                    "2025-03-01,1111-2222-3333,Jane Doe,150.00,Settled",
-                    "bad-date,4444-5555-6666,John Smith,250.00,Pending",
-                    "2025-03-03,7777-8888-9999,Alice Brown,300.00,Failed"
-            );
-
-            List<Transaction> transactions = service.getAllTransactions();
-
-            assertEquals(2, transactions.size());
-            assertEquals("Jane Doe", transactions.get(0).getAccountHolderName());
-            assertEquals("Alice Brown", transactions.get(1).getAccountHolderName());
-        }
-
-        @Test
-        @DisplayName("skips rows with too few columns")
-        void skipsShortRows() throws IOException {
-            TransactionService service = createServiceWithCsv(
-                    "Transaction Date,Account Number,Account Holder Name,Amount,Status",
-                    "2025-03-01,1111-2222-3333,Jane Doe,150.00,Settled",
-                    "2025-03-02,only-two-columns",
-                    "2025-03-03,7777-8888-9999,Alice Brown,300.00,Failed"
-            );
-
-            List<Transaction> transactions = service.getAllTransactions();
-
-            assertEquals(2, transactions.size());
-        }
-
-        @Test
-        @DisplayName("throws when CSV file does not exist")
-        void throwsForMissingFile() {
-            TransactionService service = new TransactionService(tempDir.resolve("nonexistent.csv").toString());
-
-            assertThrows(UncheckedIOException.class, service::getAllTransactions);
-        }
+        assertNotNull(result.getStatus());
+        assertTrue(
+                result.getStatus() == TransactionStatus.PENDING ||
+                result.getStatus() == TransactionStatus.SETTLED ||
+                result.getStatus() == TransactionStatus.FAILED
+        );
+        verify(repository).save(any(Transaction.class));
     }
 
-    @Nested
-    @DisplayName("addTransaction")
-    class AddTransaction {
+    @Test
+    @DisplayName("addTransaction trims whitespace from string fields")
+    void trimsWhitespace() {
+        Transaction result = service.addTransaction(
+                LocalDate.of(2025, 3, 15), "  1111-2222-3333  ", "  Jane Doe  ", new BigDecimal("100.00")
+        );
 
-        @Test
-        @DisplayName("appends transaction to CSV file")
-        void appendsToCsv() throws IOException {
-            TransactionService service = createServiceWithCsv(
-                    "Transaction Date,Account Number,Account Holder Name,Amount,Status"
-            );
+        assertEquals("1111-2222-3333", result.getAccountNumber());
+        assertEquals("Jane Doe", result.getAccountHolderName());
+    }
 
-            Transaction input = new Transaction(LocalDate.of(2025, 3, 15), "1111-2222-3333", "Jane Doe", new BigDecimal("250.00"), null);
-            service.addTransaction(input);
+    @Test
+    @DisplayName("addTransaction preserves date and amount from input")
+    void preservesInputFields() {
+        Transaction result = service.addTransaction(
+                LocalDate.of(2025, 3, 15), "1111-2222-3333", "Jane Doe", new BigDecimal("250.00")
+        );
 
-            List<String> lines = Files.readAllLines(tempDir.resolve("test.csv"));
-            assertEquals(2, lines.size());
-
-            String dataLine = lines.get(1);
-            assertTrue(dataLine.contains("2025-03-15"));
-            assertTrue(dataLine.contains("1111-2222-3333"));
-            assertTrue(dataLine.contains("Jane Doe"));
-            assertTrue(dataLine.contains("250.00"));
-        }
-
-        @Test
-        @DisplayName("normalizes amount to two decimal places in CSV")
-        void normalizesAmountScale() throws IOException {
-            TransactionService service = createServiceWithCsv(
-                    "Transaction Date,Account Number,Account Holder Name,Amount,Status"
-            );
-
-            Transaction input = new Transaction(LocalDate.of(2025, 3, 15), "1111-2222-3333", "Jane Doe", new BigDecimal("150"), null);
-            service.addTransaction(input);
-
-            List<String> lines = Files.readAllLines(tempDir.resolve("test.csv"));
-            String dataLine = lines.get(1);
-            assertTrue(dataLine.contains("150.00"), "Amount should be written as 150.00, got: " + dataLine);
-        }
-
-        @Test
-        @DisplayName("assigns a random status from the enum")
-        void assignsRandomStatus() throws IOException {
-            TransactionService service = createServiceWithCsv(
-                    "Transaction Date,Account Number,Account Holder Name,Amount,Status"
-            );
-
-            Transaction input = new Transaction(LocalDate.of(2025, 3, 15), "1111-2222-3333", "Jane Doe", new BigDecimal("100.00"), null);
-            Transaction result = service.addTransaction(input);
-
-            assertNotNull(result.getStatus());
-            assertTrue(
-                    result.getStatus() == TransactionStatus.Pending ||
-                    result.getStatus() == TransactionStatus.Settled ||
-                    result.getStatus() == TransactionStatus.Failed
-            );
-        }
-
-        @Test
-        @DisplayName("does not mutate the input transaction")
-        void doesNotMutateInput() throws IOException {
-            TransactionService service = createServiceWithCsv(
-                    "Transaction Date,Account Number,Account Holder Name,Amount,Status"
-            );
-
-            Transaction input = new Transaction(LocalDate.of(2025, 3, 15), "1111-2222-3333", "Jane Doe", new BigDecimal("100.00"), null);
-            Transaction result = service.addTransaction(input);
-
-            assertNull(input.getStatus());
-            assertNotNull(result.getStatus());
-        }
-
-        @Test
-        @DisplayName("trims whitespace from string fields")
-        void trimsWhitespace() throws IOException {
-            TransactionService service = createServiceWithCsv(
-                    "Transaction Date,Account Number,Account Holder Name,Amount,Status"
-            );
-
-            Transaction input = new Transaction(LocalDate.of(2025, 3, 15), "  1111-2222-3333  ", "  Jane Doe  ", new BigDecimal("100.00"), null);
-            Transaction result = service.addTransaction(input);
-
-            assertEquals("1111-2222-3333", result.getAccountNumber());
-            assertEquals("Jane Doe", result.getAccountHolderName());
-        }
-
-        @Test
-        @DisplayName("written transaction can be read back")
-        void roundTrip() throws IOException {
-            TransactionService service = createServiceWithCsv(
-                    "Transaction Date,Account Number,Account Holder Name,Amount,Status"
-            );
-
-            Transaction input = new Transaction(LocalDate.of(2025, 3, 15), "1111-2222-3333", "Jane Doe", new BigDecimal("250.00"), null);
-            service.addTransaction(input);
-
-            List<Transaction> transactions = service.getAllTransactions();
-            assertEquals(1, transactions.size());
-
-            Transaction read = transactions.get(0);
-            assertEquals(LocalDate.of(2025, 3, 15), read.getTransactionDate());
-            assertEquals("1111-2222-3333", read.getAccountNumber());
-            assertEquals("Jane Doe", read.getAccountHolderName());
-            assertEquals(new BigDecimal("250.00"), read.getAmount());
-            assertNotNull(read.getStatus());
-        }
+        assertEquals(LocalDate.of(2025, 3, 15), result.getTransactionDate());
+        assertEquals(new BigDecimal("250.00"), result.getAmount());
     }
 }

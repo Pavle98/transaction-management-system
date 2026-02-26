@@ -70,13 +70,24 @@ export function AddTransactionDialog({ onSaved }: { onSaved: () => void }) {
     }
   }
 
+  const parsedAmount = parseFloat(formData.amount)
+  const amountIsNonPositive = formData.amount !== "" && !isNaN(parsedAmount) && parsedAmount <= 0
+
+  const today = new Date().toISOString().split("T")[0]
+  const minDate = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 10); return d.toISOString().split("T")[0] })()
+  const dateOutOfRange = formData.transactionDate !== "" && (formData.transactionDate > today || formData.transactionDate < minDate)
+
+  const nameIsInvalid = formData.accountHolderName.trim() !== "" && !/^[\p{L}\s'-]+$/u.test(formData.accountHolderName.trim())
+
   const isValid =
     formData.transactionDate &&
+    !dateOutOfRange &&
     formData.accountNumber.trim() &&
     formData.accountHolderName.trim() &&
+    !nameIsInvalid &&
     formData.amount &&
-    !isNaN(parseFloat(formData.amount)) &&
-    parseFloat(formData.amount) > 0
+    !isNaN(parsedAmount) &&
+    parsedAmount > 0
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm() }}>
@@ -96,7 +107,7 @@ export function AddTransactionDialog({ onSaved }: { onSaved: () => void }) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 py-2">
+        <form onSubmit={(e) => { e.preventDefault(); if (isValid && !saving) handleSubmit() }} className="grid gap-4 py-2">
           <div className="grid gap-1.5">
             <Label htmlFor="txDate" className="text-sm text-foreground">
               Transaction Date
@@ -104,11 +115,21 @@ export function AddTransactionDialog({ onSaved }: { onSaved: () => void }) {
             <Input
               id="txDate"
               type="date"
+              min={minDate}
+              max={today}
               value={formData.transactionDate}
               onChange={(e) => setFormData({ ...formData, transactionDate: e.target.value })}
               className="border-border bg-secondary text-foreground focus-visible:ring-primary/40"
             />
-            <FieldError message={fieldErrors.transactionDate} />
+            {fieldErrors.transactionDate ? (
+              <FieldError message={fieldErrors.transactionDate} />
+            ) : dateOutOfRange ? (
+              <p className="text-xs text-red-400">
+                {formData.transactionDate > today
+                  ? "Date cannot be in the future"
+                  : "Date must be within the last 10 years"}
+              </p>
+            ) : null}
           </div>
 
           <div className="grid gap-1.5">
@@ -136,7 +157,11 @@ export function AddTransactionDialog({ onSaved }: { onSaved: () => void }) {
               onChange={(e) => setFormData({ ...formData, accountHolderName: e.target.value })}
               className="border-border bg-secondary text-foreground placeholder:text-muted-foreground focus-visible:ring-primary/40"
             />
-            <FieldError message={fieldErrors.accountHolderName} />
+            {fieldErrors.accountHolderName ? (
+              <FieldError message={fieldErrors.accountHolderName} />
+            ) : nameIsInvalid ? (
+              <p className="text-xs text-red-400">Name may only contain letters, spaces, hyphens, and apostrophes</p>
+            ) : null}
           </div>
 
           <div className="grid gap-1.5">
@@ -152,14 +177,17 @@ export function AddTransactionDialog({ onSaved }: { onSaved: () => void }) {
               onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
               className="border-border bg-secondary text-foreground placeholder:text-muted-foreground focus-visible:ring-primary/40"
             />
-            <FieldError message={fieldErrors.amount} />
-            {!fieldErrors.amount && (
+            {fieldErrors.amount ? (
+              <FieldError message={fieldErrors.amount} />
+            ) : amountIsNonPositive ? (
+              <p className="text-xs text-red-400">Amount must be greater than zero</p>
+            ) : (
               <p className="text-xs text-muted-foreground">
                 Use decimals, e.g. 150.00
               </p>
             )}
           </div>
-        </div>
+        </form>
 
         {error && (
           <p className="text-sm text-red-400">{error}</p>

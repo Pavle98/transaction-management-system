@@ -40,8 +40,8 @@ class TransactionControllerTest {
         @DisplayName("returns 200 with list of transactions")
         void returnsTransactions() throws Exception {
             List<Transaction> transactions = List.of(
-                    new Transaction(LocalDate.of(2025, 3, 1), "1111-2222-3333", "Jane Doe", new BigDecimal("150.00"), TransactionStatus.Settled),
-                    new Transaction(LocalDate.of(2025, 3, 2), "4444-5555-6666", "John Smith", new BigDecimal("250.00"), TransactionStatus.Pending)
+                    new Transaction(LocalDate.of(2025, 3, 1), "1111-2222-3333", "Jane Doe", new BigDecimal("150.00"), TransactionStatus.SETTLED),
+                    new Transaction(LocalDate.of(2025, 3, 2), "4444-5555-6666", "John Smith", new BigDecimal("250.00"), TransactionStatus.PENDING)
             );
             when(transactionService.getAllTransactions()).thenReturn(transactions);
 
@@ -83,8 +83,8 @@ class TransactionControllerTest {
         @Test
         @DisplayName("returns 201 with valid transaction")
         void createsTransaction() throws Exception {
-            Transaction saved = new Transaction(LocalDate.of(2025, 3, 15), "1111-2222-3333", "Jane Doe", new BigDecimal("250.00"), TransactionStatus.Pending);
-            when(transactionService.addTransaction(any(Transaction.class))).thenReturn(saved);
+            Transaction saved = new Transaction(LocalDate.of(2025, 3, 15), "1111-2222-3333", "Jane Doe", new BigDecimal("250.00"), TransactionStatus.PENDING);
+            when(transactionService.addTransaction(any(LocalDate.class), any(String.class), any(String.class), any(BigDecimal.class))).thenReturn(saved);
 
             mockMvc.perform(post("/transactions")
                             .contentType(MediaType.APPLICATION_JSON)

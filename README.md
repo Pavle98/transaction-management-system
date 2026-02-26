@@ -8,15 +8,32 @@ A full-stack application for managing transactions. The backend API reads and wr
 - **Backend:** Java 21, Spring Boot 3.4, Maven, OpenCSV
 - **Data Storage:** CSV file
 
+## Architecture
+
+The backend follows a layered architecture with strict dependency direction:
+
+```
+Controller (HTTP) → Service (business logic) → Repository (data access) → CSV file
+```
+
+- **DTOs** (`CreateTransactionRequest`, `TransactionResponse`) sit at the API boundary — the service and repository layers have no knowledge of them.
+- **Domain model** (`Transaction`) is immutable and free of framework annotations.
+- **Repository interface** (`TransactionRepository`) abstracts data access — the CSV implementation (`CsvTransactionRepository`) can be swapped for a database without changing the service or controller.
+- **Service interface** (`TransactionService`) decouples business logic from the controller, following the Dependency Inversion Principle.
+
+The frontend is a component-based React application: the main orchestrator (`TransactionManagement`) manages state and delegates rendering to focused child components (`TransactionTable`, `AddTransactionDialog`, `StatusBadge`). The API client (`lib/api.ts`) and TypeScript types (`types/transaction.ts`) are separated from UI code.
+
 ## Project Structure
 
 ```
 transaction-management-system/
 ├── backend/
 │   └── src/main/java/com/example/backend/
-│       ├── controller/        → REST endpoints
-│       ├── service/           → Business logic & CSV I/O
-│       ├── model/             → Transaction model & status enum
+│       ├── controller/        → REST endpoints (transactions, health)
+│       ├── service/           → Business logic
+│       ├── repository/        → Data access (CSV I/O)
+│       ├── dto/               → Request & response DTOs
+│       ├── model/             → Domain model & status enum
 │       ├── config/            → CORS configuration
 │       └── exception/         → Global error handling
 ├── frontend/
@@ -125,6 +142,18 @@ Set this as an environment variable or in a `.env.local` file in the `frontend/`
 
 ## API Documentation
 
+### GET /health
+
+Returns the health status of the backend service. Used by Docker Compose to check readiness before starting the frontend.
+
+**Example Response (200 OK):**
+
+```json
+{
+  "status": "UP"
+}
+```
+
 ### GET /transactions
 
 Retrieves all transactions from the CSV file.
@@ -184,7 +213,8 @@ Adds a new transaction. The status is randomly assigned by the server (Pending, 
 | `accountNumber`      | Required, must not be blank or contain commas |
 | `accountHolderName`  | Required, must not be blank or contain commas |
 | `amount`             | Required, must be greater than zero       |
-| `status`             | Ignored on input — assigned randomly by the server |
+
+The `status` field is not part of the request body — it is assigned randomly by the server (Pending, Settled, or Failed) and included only in the response.
 
 ### Error Responses
 
@@ -220,9 +250,21 @@ The `details` map contains one entry per invalid field, with the field name as t
 
 ## Testing
 
+### Test strategy
+
+**Backend (29 tests):**
+
+- **Unit tests** — `TransactionServiceTest` tests business logic (status assignment, whitespace trimming) with a mocked repository. `CsvTransactionRepositoryTest` tests CSV parsing, malformed row handling, and write operations against temp files.
+- **Controller tests** — `TransactionControllerTest` uses `@WebMvcTest` + MockMvc to test request validation, error responses, and JSON serialization without starting the full server. `HealthControllerTest` covers the health endpoint.
+- **Integration tests** — `TransactionIntegrationTest` boots the full Spring context with `@SpringBootTest` and exercises the real CSV file through the HTTP layer.
+
+**Frontend (16 tests):**
+
+- **Component integration tests** — `transaction-management.test.tsx` renders the full component tree with a stubbed `fetch`, covering table rendering, loading/error/empty states, form validation (date range, name characters, negative amounts), form submission, and server-side field-level error display.
+
 ### Run the automated tests
 
-**Backend tests** (26 tests — unit, controller, and integration):
+**Backend:**
 
 ```bash
 cd backend
@@ -236,7 +278,7 @@ cd backend
 mvnw.cmd test
 ```
 
-**Frontend tests** (13 tests — component integration):
+**Frontend:**
 
 ```bash
 cd frontend

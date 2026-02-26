@@ -9,7 +9,7 @@ services:
       - csv.file.path=/data/transactions.csv
       - cors.allowed-origin=http://localhost:3000
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/transactions"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
       interval: 5s
       timeout: 3s
       retries: 5

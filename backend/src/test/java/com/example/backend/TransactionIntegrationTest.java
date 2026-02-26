@@ -81,7 +81,7 @@ class TransactionIntegrationTest {
                 .andExpect(jsonPath("$.accountHolderName", is("Alice Brown")))
                 .andExpect(jsonPath("$.amount", is(500.00)))
                 .andExpect(jsonPath("$.status", isIn(
-                        Arrays.stream(TransactionStatus.values()).map(Enum::name).toArray()
+                        Arrays.stream(TransactionStatus.values()).map(TransactionStatus::getDisplayName).toArray()
                 )));
 
         // verify it was persisted — GET should now return 3

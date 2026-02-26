@@ -78,17 +78,17 @@ describe("TransactionManagement", () => {
       expect(screen.getByText("Status")).toBeInTheDocument()
     })
 
-    it("formats amounts as USD currency", async () => {
+    it("formats amounts with two decimal places", async () => {
       vi.stubGlobal("fetch", mockFetchSuccess())
 
       render(<TransactionManagement />)
 
       await waitFor(() => {
-        expect(screen.getByText("$150.00")).toBeInTheDocument()
+        expect(screen.getByText("150.00")).toBeInTheDocument()
       })
 
-      expect(screen.getByText("$75.50")).toBeInTheDocument()
-      expect(screen.getByText("$310.75")).toBeInTheDocument()
+      expect(screen.getByText("75.50")).toBeInTheDocument()
+      expect(screen.getByText("310.75")).toBeInTheDocument()
     })
 
     it("renders status badges with correct text", async () => {
@@ -189,6 +189,66 @@ describe("TransactionManagement", () => {
 
       const saveButton = screen.getByRole("button", { name: /save transaction/i })
       expect(saveButton).toBeDisabled()
+    })
+
+    it("shows error and disables save when date is in the future", async () => {
+      vi.stubGlobal("fetch", mockFetchSuccess())
+
+      render(<TransactionManagement />)
+
+      await waitFor(() => {
+        expect(screen.getByText("Maria Johnson")).toBeInTheDocument()
+      })
+
+      await userEvent.click(screen.getByRole("button", { name: /add transaction/i }))
+
+      await userEvent.type(screen.getByLabelText("Transaction Date"), "2099-01-01")
+      await userEvent.type(screen.getByLabelText("Account Number"), "1111-2222-3333")
+      await userEvent.type(screen.getByLabelText("Account Holder Name"), "Jane Doe")
+      await userEvent.type(screen.getByLabelText("Amount"), "250")
+
+      expect(screen.getByText("Date cannot be in the future")).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /save transaction/i })).toBeDisabled()
+    })
+
+    it("shows error and disables save when name contains numbers", async () => {
+      vi.stubGlobal("fetch", mockFetchSuccess())
+
+      render(<TransactionManagement />)
+
+      await waitFor(() => {
+        expect(screen.getByText("Maria Johnson")).toBeInTheDocument()
+      })
+
+      await userEvent.click(screen.getByRole("button", { name: /add transaction/i }))
+
+      await userEvent.type(screen.getByLabelText("Transaction Date"), "2025-04-01")
+      await userEvent.type(screen.getByLabelText("Account Number"), "1111-2222-3333")
+      await userEvent.type(screen.getByLabelText("Account Holder Name"), "Jane123")
+      await userEvent.type(screen.getByLabelText("Amount"), "250")
+
+      expect(screen.getByText("Name may only contain letters, spaces, hyphens, and apostrophes")).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /save transaction/i })).toBeDisabled()
+    })
+
+    it("shows error and disables save when amount is negative", async () => {
+      vi.stubGlobal("fetch", mockFetchSuccess())
+
+      render(<TransactionManagement />)
+
+      await waitFor(() => {
+        expect(screen.getByText("Maria Johnson")).toBeInTheDocument()
+      })
+
+      await userEvent.click(screen.getByRole("button", { name: /add transaction/i }))
+
+      await userEvent.type(screen.getByLabelText("Transaction Date"), "2025-04-01")
+      await userEvent.type(screen.getByLabelText("Account Number"), "1111-2222-3333")
+      await userEvent.type(screen.getByLabelText("Account Holder Name"), "Jane Doe")
+      await userEvent.type(screen.getByLabelText("Amount"), "-50")
+
+      expect(screen.getByText("Amount must be greater than zero")).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /save transaction/i })).toBeDisabled()
     })
 
     it("enables save button when all fields are filled", async () => {
