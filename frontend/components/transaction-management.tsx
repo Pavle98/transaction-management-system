@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import {
   Plus,
   AlertCircle,
   RefreshCw,
+  CheckCircle2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -50,6 +51,19 @@ interface Transaction {
 // ---------------------------------------------------------------------------
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
 
+interface ApiError {
+  error: string
+  details?: Record<string, string>
+}
+
+class TransactionApiError extends Error {
+  details?: Record<string, string>
+  constructor(message: string, details?: Record<string, string>) {
+    super(message)
+    this.details = details
+  }
+}
+
 async function fetchTransactions(): Promise<Transaction[]> {
   const res = await fetch(`${API_URL}/transactions`)
   if (!res.ok) throw new Error("Failed to fetch transactions")
@@ -64,7 +78,10 @@ async function createTransaction(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   })
-  if (!res.ok) throw new Error("Failed to create transaction")
+  if (!res.ok) {
+    const body: ApiError = await res.json().catch(() => ({ error: "Failed to create transaction" }))
+    throw new TransactionApiError(body.error, body.details)
+  }
   return res.json()
 }
 
@@ -151,7 +168,7 @@ function TransactionTableRow({ tx }: { tx: Transaction }) {
         {tx.accountHolderName}
       </TableCell>
       <TableCell className="text-right font-mono text-sm tabular-nums text-foreground">
-        ${tx.amount.toFixed(2)}
+        {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(tx.amount)}
       </TableCell>
       <TableCell>
         <StatusBadge status={tx.status} />
@@ -163,10 +180,16 @@ function TransactionTableRow({ tx }: { tx: Transaction }) {
 // ---------------------------------------------------------------------------
 // Add Transaction Dialog
 // ---------------------------------------------------------------------------
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null
+  return <p className="text-xs text-red-400">{message}</p>
+}
+
 function AddTransactionDialog({ onSaved }: { onSaved: () => void }) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [formData, setFormData] = useState({
     transactionDate: "",
     accountNumber: "",
@@ -182,11 +205,13 @@ function AddTransactionDialog({ onSaved }: { onSaved: () => void }) {
       amount: "",
     })
     setError("")
+    setFieldErrors({})
   }
 
   async function handleSubmit() {
     setSaving(true)
     setError("")
+    setFieldErrors({})
     try {
       await createTransaction({
         transactionDate: formData.transactionDate,
@@ -197,8 +222,12 @@ function AddTransactionDialog({ onSaved }: { onSaved: () => void }) {
       resetForm()
       setOpen(false)
       onSaved()
-    } catch {
-      setError("Failed to save transaction. Please try again.")
+    } catch (e) {
+      if (e instanceof TransactionApiError && e.details) {
+        setFieldErrors(e.details)
+      } else {
+        setError("Failed to save transaction. Please try again.")
+      }
     } finally {
       setSaving(false)
     }
@@ -242,6 +271,7 @@ function AddTransactionDialog({ onSaved }: { onSaved: () => void }) {
               onChange={(e) => setFormData({ ...formData, transactionDate: e.target.value })}
               className="border-border bg-secondary text-foreground focus-visible:ring-primary/40"
             />
+            <FieldError message={fieldErrors.transactionDate} />
           </div>
 
           <div className="grid gap-1.5">
@@ -255,6 +285,7 @@ function AddTransactionDialog({ onSaved }: { onSaved: () => void }) {
               onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })}
               className="border-border bg-secondary text-foreground placeholder:text-muted-foreground focus-visible:ring-primary/40"
             />
+            <FieldError message={fieldErrors.accountNumber} />
           </div>
 
           <div className="grid gap-1.5">
@@ -268,6 +299,7 @@ function AddTransactionDialog({ onSaved }: { onSaved: () => void }) {
               onChange={(e) => setFormData({ ...formData, accountHolderName: e.target.value })}
               className="border-border bg-secondary text-foreground placeholder:text-muted-foreground focus-visible:ring-primary/40"
             />
+            <FieldError message={fieldErrors.accountHolderName} />
           </div>
 
           <div className="grid gap-1.5">
@@ -283,9 +315,12 @@ function AddTransactionDialog({ onSaved }: { onSaved: () => void }) {
               onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
               className="border-border bg-secondary text-foreground placeholder:text-muted-foreground focus-visible:ring-primary/40"
             />
-            <p className="text-xs text-muted-foreground">
-              Use decimals, e.g. 150.00
-            </p>
+            <FieldError message={fieldErrors.amount} />
+            {!fieldErrors.amount && (
+              <p className="text-xs text-muted-foreground">
+                Use decimals, e.g. 150.00
+              </p>
+            )}
           </div>
         </div>
 
@@ -412,9 +447,36 @@ function TableContent({
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Success toast
+// ---------------------------------------------------------------------------
+function SuccessToast({ show, message }: { show: boolean; message: string }) {
+  return (
+    <div
+      className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-400 shadow-lg backdrop-blur-sm transition-all duration-300 ${
+        show ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none"
+      }`}
+    >
+      <CheckCircle2 className="size-4" />
+      {message}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
 export default function TransactionManagement() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [uiState, setUiState] = useState<UIState>("loading")
+  const [toast, setToast] = useState({ show: false, message: "" })
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>(null)
+
+  function showToast(message: string) {
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    setToast({ show: true, message })
+    toastTimer.current = setTimeout(() => setToast({ show: false, message: "" }), 3000)
+  }
 
   const loadTransactions = useCallback(async () => {
     setUiState("loading")
@@ -431,6 +493,11 @@ export default function TransactionManagement() {
     loadTransactions()
   }, [loadTransactions])
 
+  async function handleSaved() {
+    await loadTransactions()
+    showToast("Transaction added successfully")
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-5 md:p-8">
       {/* Header */}
@@ -443,7 +510,7 @@ export default function TransactionManagement() {
             View and manage transactions stored in your CSV file.
           </p>
         </div>
-        <AddTransactionDialog onSaved={loadTransactions} />
+        <AddTransactionDialog onSaved={handleSaved} />
       </header>
 
       {/* Main transactions card */}
@@ -457,6 +524,9 @@ export default function TransactionManagement() {
       <p className="pb-1 text-center text-xs text-muted-foreground/50">
         Data is stored locally in a CSV file.
       </p>
+
+      {/* Success toast */}
+      <SuccessToast show={toast.show} message={toast.message} />
     </div>
   )
 }

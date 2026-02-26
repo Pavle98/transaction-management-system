@@ -1,6 +1,6 @@
 # Transaction Management System
 
-A full-stack application for managing transactions. The backend API reads and writes to a CSV file, and the frontend displays the data in a paginated table with the ability to add new transactions.
+A full-stack application for managing transactions. The backend API reads and writes to a CSV file, and the frontend displays the data in a table with the ability to add new transactions.
 
 ## Tech Stack
 
@@ -161,6 +161,29 @@ Adds a new transaction. The status is randomly assigned by the server (Pending, 
 
 ## Testing
 
+### Run the automated tests
+
+**Backend tests** (unit, controller, and integration):
+
+```bash
+cd backend
+./mvnw test
+```
+
+On Windows:
+
+```bash
+cd backend
+mvnw.cmd test
+```
+
+**Frontend tests**:
+
+```bash
+cd frontend
+npm test
+```
+
 ### Test the API manually
 
 With the backend running, you can test using `curl`:
@@ -185,3 +208,15 @@ curl -X POST http://localhost:8080/transactions \
 2. Verify the transaction table loads with the sample data (12 rows)
 3. Click **Add Transaction**, fill in the form, and click **Save Transaction**
 4. Verify the new transaction appears in the table with a randomly assigned status
+
+## Troubleshooting
+
+| Problem | Solution |
+|---|---|
+| `Port 8080 already in use` | Stop the process using port 8080, or change `server.port` in `application.properties` |
+| `Port 3000 already in use` | Stop the process using port 3000, or run the frontend with `PORT=3001 npm run dev` |
+| `CSV file not found` on backend startup | Ensure the `data/transactions.csv` file exists. The default path is `../data/transactions.csv` relative to the `backend/` directory |
+| `CORS error` in browser console | Ensure the backend's `cors.allowed-origin` matches the frontend URL (default: `http://localhost:3000`) |
+| `mvnw: Permission denied` | Run `chmod +x mvnw` in the `backend/` directory |
+| `Java version error` | Ensure Java 21 is installed: `java -version` |
+| `Node version error` | Ensure Node.js 20+ is installed: `node -v` |
