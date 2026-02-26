@@ -136,6 +136,21 @@ class TransactionServiceTest {
         }
 
         @Test
+        @DisplayName("normalizes amount to two decimal places in CSV")
+        void normalizesAmountScale() throws IOException {
+            TransactionService service = createServiceWithCsv(
+                    "Transaction Date,Account Number,Account Holder Name,Amount,Status"
+            );
+
+            Transaction input = new Transaction(LocalDate.of(2025, 3, 15), "1111-2222-3333", "Jane Doe", new BigDecimal("150"), null);
+            service.addTransaction(input);
+
+            List<String> lines = Files.readAllLines(tempDir.resolve("test.csv"));
+            String dataLine = lines.get(1);
+            assertTrue(dataLine.contains("150.00"), "Amount should be written as 150.00, got: " + dataLine);
+        }
+
+        @Test
         @DisplayName("assigns a random status from the enum")
         void assignsRandomStatus() throws IOException {
             TransactionService service = createServiceWithCsv(

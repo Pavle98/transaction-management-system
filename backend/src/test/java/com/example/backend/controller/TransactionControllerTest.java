@@ -177,6 +177,40 @@ class TransactionControllerTest {
         }
 
         @Test
+        @DisplayName("returns 400 when account number contains commas")
+        void rejectsCommaInAccountNumber() throws Exception {
+            mockMvc.perform(post("/transactions")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "transactionDate": "2025-03-15",
+                                      "accountNumber": "1111,2222,3333",
+                                      "accountHolderName": "Jane Doe",
+                                      "amount": 100.00
+                                    }
+                                    """))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.details.accountNumber", is("Account number must not contain commas")));
+        }
+
+        @Test
+        @DisplayName("returns 400 when account holder name contains commas")
+        void rejectsCommaInAccountHolderName() throws Exception {
+            mockMvc.perform(post("/transactions")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "transactionDate": "2025-03-15",
+                                      "accountNumber": "1111-2222-3333",
+                                      "accountHolderName": "Smith, John",
+                                      "amount": 100.00
+                                    }
+                                    """))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.details.accountHolderName", is("Account holder name must not contain commas")));
+        }
+
+        @Test
         @DisplayName("returns 400 when date format is invalid")
         void rejectsInvalidDateFormat() throws Exception {
             mockMvc.perform(post("/transactions")

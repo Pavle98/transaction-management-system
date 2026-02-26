@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, waitFor, within } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import TransactionManagement from "@/components/transaction-management"
 
@@ -48,7 +48,7 @@ beforeEach(() => {
 describe("TransactionManagement", () => {
   describe("Transaction Table", () => {
     it("displays all transactions from the API", async () => {
-      global.fetch = mockFetchSuccess()
+      vi.stubGlobal("fetch", mockFetchSuccess())
 
       render(<TransactionManagement />)
 
@@ -63,7 +63,7 @@ describe("TransactionManagement", () => {
     })
 
     it("renders all five column headers", async () => {
-      global.fetch = mockFetchSuccess()
+      vi.stubGlobal("fetch", mockFetchSuccess())
 
       render(<TransactionManagement />)
 
@@ -79,7 +79,7 @@ describe("TransactionManagement", () => {
     })
 
     it("formats amounts as USD currency", async () => {
-      global.fetch = mockFetchSuccess()
+      vi.stubGlobal("fetch", mockFetchSuccess())
 
       render(<TransactionManagement />)
 
@@ -92,7 +92,7 @@ describe("TransactionManagement", () => {
     })
 
     it("renders status badges with correct text", async () => {
-      global.fetch = mockFetchSuccess()
+      vi.stubGlobal("fetch", mockFetchSuccess())
 
       render(<TransactionManagement />)
 
@@ -105,16 +105,18 @@ describe("TransactionManagement", () => {
     })
 
     it("shows loading skeletons while fetching", () => {
-      global.fetch = vi.fn().mockReturnValue(new Promise(() => {})) // never resolves
+      vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {}))) // never resolves
 
       render(<TransactionManagement />)
 
-      // Skeleton rows should be present — they don't have text, just animated placeholders
+      // Table should render with header row + 5 skeleton placeholder rows
+      const rows = screen.getAllByRole("row")
+      expect(rows.length).toBe(6) // 1 header + 5 skeleton rows
       expect(screen.queryByText("Maria Johnson")).not.toBeInTheDocument()
     })
 
     it("shows error state with retry button when fetch fails", async () => {
-      global.fetch = mockFetchFailure()
+      vi.stubGlobal("fetch", mockFetchFailure())
 
       render(<TransactionManagement />)
 
@@ -126,8 +128,7 @@ describe("TransactionManagement", () => {
     })
 
     it("retries fetching when retry button is clicked", async () => {
-      const fetchMock = mockFetchFailure()
-      global.fetch = fetchMock
+      vi.stubGlobal("fetch", mockFetchFailure())
 
       render(<TransactionManagement />)
 
@@ -136,7 +137,7 @@ describe("TransactionManagement", () => {
       })
 
       // Switch to success response for retry
-      global.fetch = mockFetchSuccess()
+      vi.stubGlobal("fetch", mockFetchSuccess())
 
       await userEvent.click(screen.getByRole("button", { name: /retry/i }))
 
@@ -146,7 +147,7 @@ describe("TransactionManagement", () => {
     })
 
     it("shows empty state when no transactions exist", async () => {
-      global.fetch = mockFetchSuccess([])
+      vi.stubGlobal("fetch", mockFetchSuccess([]))
 
       render(<TransactionManagement />)
 
@@ -158,7 +159,7 @@ describe("TransactionManagement", () => {
 
   describe("Add Transaction Dialog", () => {
     it("opens the dialog when Add Transaction button is clicked", async () => {
-      global.fetch = mockFetchSuccess()
+      vi.stubGlobal("fetch", mockFetchSuccess())
 
       render(<TransactionManagement />)
 
@@ -176,7 +177,7 @@ describe("TransactionManagement", () => {
     })
 
     it("disables save button when form is incomplete", async () => {
-      global.fetch = mockFetchSuccess()
+      vi.stubGlobal("fetch", mockFetchSuccess())
 
       render(<TransactionManagement />)
 
@@ -191,7 +192,7 @@ describe("TransactionManagement", () => {
     })
 
     it("enables save button when all fields are filled", async () => {
-      global.fetch = mockFetchSuccess()
+      vi.stubGlobal("fetch", mockFetchSuccess())
 
       render(<TransactionManagement />)
 
@@ -222,7 +223,7 @@ describe("TransactionManagement", () => {
       const updatedList = [...SAMPLE_TRANSACTIONS, createdTransaction]
 
       let callCount = 0
-      global.fetch = vi.fn().mockImplementation((url: string, options?: RequestInit) => {
+      vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string, options?: RequestInit) => {
         if (options?.method === "POST") {
           return Promise.resolve({
             ok: true,
@@ -236,7 +237,7 @@ describe("TransactionManagement", () => {
           ok: true,
           json: () => Promise.resolve(data),
         })
-      })
+      }))
 
       render(<TransactionManagement />)
 
@@ -261,7 +262,7 @@ describe("TransactionManagement", () => {
     it("displays field-level errors from the backend", async () => {
       // First call: GET success
       // Second call: POST with validation errors
-      global.fetch = vi.fn().mockImplementation((_url: string, options?: RequestInit) => {
+      vi.stubGlobal("fetch", vi.fn().mockImplementation((_url: string, options?: RequestInit) => {
         if (options?.method === "POST") {
           return Promise.resolve({
             ok: false,
@@ -279,7 +280,7 @@ describe("TransactionManagement", () => {
           ok: true,
           json: () => Promise.resolve(SAMPLE_TRANSACTIONS),
         })
-      })
+      }))
 
       render(<TransactionManagement />)
 

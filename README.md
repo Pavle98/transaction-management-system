@@ -12,10 +12,26 @@ A full-stack application for managing transactions. The backend API reads and wr
 
 ```
 transaction-management-system/
-├── frontend/          → Next.js app (UI)
-├── backend/           → Spring Boot app (API)
-├── data/              → CSV file used as storage
-├── docker-compose.yml → Runs frontend + backend together
+├── backend/
+│   └── src/main/java/com/example/backend/
+│       ├── controller/        → REST endpoints
+│       ├── service/           → Business logic & CSV I/O
+│       ├── model/             → Transaction model & status enum
+│       ├── config/            → CORS configuration
+│       └── exception/         → Global error handling
+├── frontend/
+│   ├── app/                   → Next.js app router (layout, page, styles)
+│   ├── components/            → UI components
+│   │   ├── transaction-management.tsx   → Main orchestrator
+│   │   ├── transaction-table.tsx        → Table, loading, empty & error states
+│   │   ├── add-transaction-dialog.tsx   → Form dialog
+│   │   ├── status-badge.tsx             → Status badge with colors
+│   │   └── ui/                          → shadcn/ui primitives
+│   ├── lib/                   → API client & utilities
+│   └── types/                 → TypeScript type definitions
+├── data/
+│   └── transactions.csv       → CSV data file (12 sample rows)
+├── docker-compose.yml         → Runs frontend + backend with health checks
 └── README.md
 ```
 
@@ -46,6 +62,7 @@ docker compose up --build
 
 This will:
 - Build and start the backend on **http://localhost:8080**
+- Wait for the backend health check to pass
 - Build and start the frontend on **http://localhost:3000**
 
 Open **http://localhost:3000** in your browser.
@@ -118,7 +135,7 @@ Retrieves all transactions from the CSV file.
 GET http://localhost:8080/transactions
 ```
 
-**Example Response:**
+**Example Response (200 OK):**
 
 ```json
 [
@@ -159,11 +176,53 @@ Adds a new transaction. The status is randomly assigned by the server (Pending, 
 }
 ```
 
+### Validation Rules
+
+| Field                | Rule                                      |
+|----------------------|-------------------------------------------|
+| `transactionDate`    | Required, format `YYYY-MM-DD`             |
+| `accountNumber`      | Required, must not be blank or contain commas |
+| `accountHolderName`  | Required, must not be blank or contain commas |
+| `amount`             | Required, must be greater than zero       |
+| `status`             | Ignored on input — assigned randomly by the server |
+
+### Error Responses
+
+**Validation error (400 Bad Request):**
+
+```json
+{
+  "error": "Validation failed",
+  "details": {
+    "accountNumber": "Account number is required",
+    "amount": "Amount must be greater than zero"
+  }
+}
+```
+
+The `details` map contains one entry per invalid field, with the field name as the key and the validation message as the value. The frontend displays these as inline errors below each form field.
+
+**Malformed request body (400 Bad Request):**
+
+```json
+{
+  "error": "Invalid request body"
+}
+```
+
+**Server error (500 Internal Server Error):**
+
+```json
+{
+  "error": "An unexpected error occurred"
+}
+```
+
 ## Testing
 
 ### Run the automated tests
 
-**Backend tests** (unit, controller, and integration):
+**Backend tests** (26 tests — unit, controller, and integration):
 
 ```bash
 cd backend
@@ -177,7 +236,7 @@ cd backend
 mvnw.cmd test
 ```
 
-**Frontend tests**:
+**Frontend tests** (13 tests — component integration):
 
 ```bash
 cd frontend

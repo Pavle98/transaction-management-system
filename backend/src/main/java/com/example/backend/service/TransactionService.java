@@ -4,6 +4,7 @@ import com.example.backend.model.Transaction;
 import com.example.backend.model.TransactionStatus;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
+import com.opencsv.exceptions.CsvValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -14,10 +15,13 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -46,12 +50,15 @@ public class TransactionService {
         if (!Files.isReadable(path)) {
             throw new IllegalStateException("CSV file is not readable: " + path.toAbsolutePath());
         }
+        if (!Files.isWritable(path)) {
+            throw new IllegalStateException("CSV file is not writable: " + path.toAbsolutePath());
+        }
         log.info("CSV file validated: {}", path.toAbsolutePath());
     }
 
     public List<Transaction> getAllTransactions() {
         lock.readLock().lock();
-        try (CSVReader reader = new CSVReader(new FileReader(csvFilePath))) {
+        try (CSVReader reader = new CSVReader(new FileReader(csvFilePath, StandardCharsets.UTF_8))) {
             reader.readNext(); // skip header
 
             List<Transaction> transactions = new ArrayList<>();
@@ -62,7 +69,7 @@ public class TransactionService {
                 rowNumber++;
                 try {
                     transactions.add(parseTransaction(line, rowNumber));
-                } catch (Exception e) {
+                } catch (DateTimeParseException | IllegalArgumentException e) {
                     log.warn("Skipping malformed CSV row {}: {}", rowNumber, e.getMessage());
                 }
             }
@@ -71,8 +78,8 @@ public class TransactionService {
             return transactions;
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to read CSV file", e);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to parse CSV file", e);
+        } catch (CsvValidationException e) {
+            throw new RuntimeException("CSV validation failed", e);
         } finally {
             lock.readLock().unlock();
         }
@@ -90,7 +97,7 @@ public class TransactionService {
         );
 
         lock.writeLock().lock();
-        try (CSVWriter writer = new CSVWriter(new FileWriter(csvFilePath, true),
+        try (CSVWriter writer = new CSVWriter(new FileWriter(csvFilePath, StandardCharsets.UTF_8, true),
                 CSVWriter.DEFAULT_SEPARATOR,
                 CSVWriter.NO_QUOTE_CHARACTER,
                 CSVWriter.DEFAULT_ESCAPE_CHARACTER,
@@ -102,7 +109,7 @@ public class TransactionService {
             lock.writeLock().unlock();
         }
 
-        log.info("Transaction added for account {} with status {}", newTransaction.getAccountNumber(), status);
+        log.info("Transaction added for account {} — amount: {}, status: {}", newTransaction.getAccountNumber(), newTransaction.getAmount(), status);
         return newTransaction;
     }
 
@@ -127,7 +134,7 @@ public class TransactionService {
                 transaction.getTransactionDate().toString(),
                 transaction.getAccountNumber(),
                 transaction.getAccountHolderName(),
-                transaction.getAmount().toPlainString(),
+                transaction.getAmount().setScale(2, RoundingMode.HALF_UP).toPlainString(),
                 transaction.getStatus().name()
         };
     }
