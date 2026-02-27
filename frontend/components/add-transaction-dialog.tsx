@@ -87,7 +87,7 @@ export function AddTransactionDialog({ onSaved }: { onSaved: () => void }) {
   const dateOutOfRange = formData.transactionDate !== "" && dateFormatValid && (formData.transactionDate > today || formData.transactionDate < minDate)
   const dateInvalid = formData.transactionDate !== "" && !dateFormatValid
 
-  const nameIsInvalid = formData.accountHolderName.trim() !== "" && !/^[\p{L}\s'-]+$/u.test(formData.accountHolderName.trim())
+  const nameIsInvalid = formData.accountHolderName.trim() !== "" && !/^[\p{L} '-]+$/u.test(formData.accountHolderName.trim())
 
   const isValid =
     formData.transactionDate &&

@@ -19,7 +19,7 @@ public record CreateTransactionRequest(
         String accountNumber,
 
         @NotBlank(message = "Account holder name is required")
-        @Pattern(regexp = "^[\\p{L}\\s'\\-]*$", message = "Account holder name may only contain letters, spaces, hyphens, and apostrophes")
+        @Pattern(regexp = "^[\\p{L} '\\-]*$", message = "Account holder name may only contain letters, spaces, hyphens, and apostrophes")
         String accountHolderName,
 
         @NotNull(message = "Amount is required")
