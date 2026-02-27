@@ -11,7 +11,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 @SpringBootTest
-class TransactionManagementApplicationTests {
+class TransactionManagementApplicationIntegrationTest {
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) throws IOException {

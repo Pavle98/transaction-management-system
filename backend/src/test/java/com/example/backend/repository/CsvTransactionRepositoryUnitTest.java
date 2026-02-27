@@ -18,7 +18,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class CsvTransactionRepositoryTest {
+class CsvTransactionRepositoryUnitTest {
 
     @TempDir
     Path tempDir;
