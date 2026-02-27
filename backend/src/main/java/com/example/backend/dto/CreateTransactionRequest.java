@@ -2,6 +2,7 @@ package com.example.backend.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 
@@ -10,6 +11,7 @@ import java.time.LocalDate;
 
 public record CreateTransactionRequest(
         @NotNull(message = "Transaction date is required")
+        @PastOrPresent(message = "Transaction date must not be in the future")
         LocalDate transactionDate,
 
         @NotBlank(message = "Account number is required")
@@ -17,7 +19,7 @@ public record CreateTransactionRequest(
         String accountNumber,
 
         @NotBlank(message = "Account holder name is required")
-        @Pattern(regexp = "^[^,]*$", message = "Account holder name must not contain commas")
+        @Pattern(regexp = "^[\\p{L}\\s'\\-]*$", message = "Account holder name may only contain letters, spaces, hyphens, and apostrophes")
         String accountHolderName,
 
         @NotNull(message = "Amount is required")

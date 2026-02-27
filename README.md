@@ -209,9 +209,9 @@ Adds a new transaction. The status is randomly assigned by the server (Pending, 
 
 | Field                | Rule                                      |
 |----------------------|-------------------------------------------|
-| `transactionDate`    | Required, format `YYYY-MM-DD`             |
+| `transactionDate`    | Required, format `YYYY-MM-DD`, must not be in the future |
 | `accountNumber`      | Required, must not be blank or contain commas |
-| `accountHolderName`  | Required, must not be blank or contain commas |
+| `accountHolderName`  | Required, letters, spaces, hyphens, and apostrophes only |
 | `amount`             | Required, must be greater than zero       |
 
 The `status` field is not part of the request body — it is assigned randomly by the server (Pending, Settled, or Failed) and included only in the response.
@@ -252,7 +252,7 @@ The `details` map contains one entry per invalid field, with the field name as t
 
 ### Test strategy
 
-**Backend (30 tests):**
+**Backend (32 tests):**
 
 - **Unit tests** — `TransactionServiceTest` tests business logic (status assignment, whitespace trimming) with a mocked repository. `CsvTransactionRepositoryTest` tests CSV parsing, malformed row handling, and write operations against temp files.
 - **Controller tests** — `TransactionControllerTest` uses `@WebMvcTest` + MockMvc to test request validation, error responses, and JSON serialization without starting the full server. `HealthControllerTest` covers the health endpoint.
