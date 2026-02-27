@@ -252,7 +252,7 @@ The `details` map contains one entry per invalid field, with the field name as t
 
 ### Test strategy
 
-**Backend (29 tests):**
+**Backend (30 tests):**
 
 - **Unit tests** — `TransactionServiceTest` tests business logic (status assignment, whitespace trimming) with a mocked repository. `CsvTransactionRepositoryTest` tests CSV parsing, malformed row handling, and write operations against temp files.
 - **Controller tests** — `TransactionControllerTest` uses `@WebMvcTest` + MockMvc to test request validation, error responses, and JSON serialization without starting the full server. `HealthControllerTest` covers the health endpoint.

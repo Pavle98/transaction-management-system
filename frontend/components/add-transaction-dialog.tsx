@@ -27,6 +27,7 @@ export function AddTransactionDialog({ onSaved }: { onSaved: () => void }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [formData, setFormData] = useState({
     transactionDate: "",
     accountNumber: "",
@@ -43,6 +44,11 @@ export function AddTransactionDialog({ onSaved }: { onSaved: () => void }) {
     })
     setError("")
     setFieldErrors({})
+    setTouched({})
+  }
+
+  function markTouched(field: string) {
+    setTouched((prev) => ({ ...prev, [field]: true }))
   }
 
   async function handleSubmit() {
@@ -62,6 +68,8 @@ export function AddTransactionDialog({ onSaved }: { onSaved: () => void }) {
     } catch (e) {
       if (e instanceof TransactionApiError && e.details) {
         setFieldErrors(e.details)
+      } else if (e instanceof TransactionApiError) {
+        setError(e.message)
       } else {
         setError("Failed to save transaction. Please try again.")
       }
@@ -75,12 +83,15 @@ export function AddTransactionDialog({ onSaved }: { onSaved: () => void }) {
 
   const today = new Date().toISOString().split("T")[0]
   const minDate = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 10); return d.toISOString().split("T")[0] })()
-  const dateOutOfRange = formData.transactionDate !== "" && (formData.transactionDate > today || formData.transactionDate < minDate)
+  const dateFormatValid = /^\d{4}-\d{2}-\d{2}$/.test(formData.transactionDate)
+  const dateOutOfRange = formData.transactionDate !== "" && dateFormatValid && (formData.transactionDate > today || formData.transactionDate < minDate)
+  const dateInvalid = formData.transactionDate !== "" && !dateFormatValid
 
   const nameIsInvalid = formData.accountHolderName.trim() !== "" && !/^[\p{L}\s'-]+$/u.test(formData.accountHolderName.trim())
 
   const isValid =
     formData.transactionDate &&
+    dateFormatValid &&
     !dateOutOfRange &&
     formData.accountNumber.trim() &&
     formData.accountHolderName.trim() &&
@@ -119,16 +130,21 @@ export function AddTransactionDialog({ onSaved }: { onSaved: () => void }) {
               max={today}
               value={formData.transactionDate}
               onChange={(e) => setFormData({ ...formData, transactionDate: e.target.value })}
+              onBlur={() => markTouched("transactionDate")}
               className="border-border bg-secondary text-foreground focus-visible:ring-primary/40"
             />
             {fieldErrors.transactionDate ? (
               <FieldError message={fieldErrors.transactionDate} />
+            ) : dateInvalid ? (
+              <p className="text-xs text-red-400">Please enter a valid date (YYYY-MM-DD)</p>
             ) : dateOutOfRange ? (
               <p className="text-xs text-red-400">
                 {formData.transactionDate > today
                   ? "Date cannot be in the future"
                   : "Date must be within the last 10 years"}
               </p>
+            ) : touched.transactionDate && !formData.transactionDate ? (
+              <p className="text-xs text-red-400">Transaction date is required</p>
             ) : null}
           </div>
 
@@ -141,9 +157,14 @@ export function AddTransactionDialog({ onSaved }: { onSaved: () => void }) {
               placeholder="e.g. 1234-5678-9012"
               value={formData.accountNumber}
               onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })}
+              onBlur={() => markTouched("accountNumber")}
               className="border-border bg-secondary text-foreground placeholder:text-muted-foreground focus-visible:ring-primary/40"
             />
-            <FieldError message={fieldErrors.accountNumber} />
+            {fieldErrors.accountNumber ? (
+              <FieldError message={fieldErrors.accountNumber} />
+            ) : touched.accountNumber && !formData.accountNumber.trim() ? (
+              <p className="text-xs text-red-400">Account number is required</p>
+            ) : null}
           </div>
 
           <div className="grid gap-1.5">
@@ -155,12 +176,15 @@ export function AddTransactionDialog({ onSaved }: { onSaved: () => void }) {
               placeholder="e.g. Jane Doe"
               value={formData.accountHolderName}
               onChange={(e) => setFormData({ ...formData, accountHolderName: e.target.value })}
+              onBlur={() => markTouched("accountHolderName")}
               className="border-border bg-secondary text-foreground placeholder:text-muted-foreground focus-visible:ring-primary/40"
             />
             {fieldErrors.accountHolderName ? (
               <FieldError message={fieldErrors.accountHolderName} />
             ) : nameIsInvalid ? (
               <p className="text-xs text-red-400">Name may only contain letters, spaces, hyphens, and apostrophes</p>
+            ) : touched.accountHolderName && !formData.accountHolderName.trim() ? (
+              <p className="text-xs text-red-400">Account holder name is required</p>
             ) : null}
           </div>
 
@@ -175,12 +199,15 @@ export function AddTransactionDialog({ onSaved }: { onSaved: () => void }) {
               placeholder="0.00"
               value={formData.amount}
               onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+              onBlur={() => markTouched("amount")}
               className="border-border bg-secondary text-foreground placeholder:text-muted-foreground focus-visible:ring-primary/40"
             />
             {fieldErrors.amount ? (
               <FieldError message={fieldErrors.amount} />
             ) : amountIsNonPositive ? (
               <p className="text-xs text-red-400">Amount must be greater than zero</p>
+            ) : touched.amount && !formData.amount ? (
+              <p className="text-xs text-red-400">Amount is required</p>
             ) : (
               <p className="text-xs text-muted-foreground">
                 Use decimals, e.g. 150.00

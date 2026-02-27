@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.RoundingMode;
 import java.util.List;
 
 @RestController
@@ -44,7 +45,7 @@ public class TransactionController {
                 t.getTransactionDate(),
                 t.getAccountNumber(),
                 t.getAccountHolderName(),
-                t.getAmount(),
+                t.getAmount().setScale(2, RoundingMode.HALF_UP),
                 t.getStatus()
         );
     }
