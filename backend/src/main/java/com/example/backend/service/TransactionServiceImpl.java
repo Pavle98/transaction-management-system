@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -35,7 +36,7 @@ public class TransactionServiceImpl implements TransactionService {
                 transactionDate,
                 accountNumber.trim(),
                 accountHolderName.trim(),
-                amount,
+                amount.setScale(2, RoundingMode.HALF_UP),
                 status
         );
 

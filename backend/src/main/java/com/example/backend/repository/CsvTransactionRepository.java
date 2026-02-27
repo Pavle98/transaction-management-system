@@ -16,7 +16,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -121,7 +120,7 @@ public class CsvTransactionRepository implements TransactionRepository {
                 transaction.getTransactionDate().toString(),
                 transaction.getAccountNumber(),
                 transaction.getAccountHolderName(),
-                transaction.getAmount().setScale(2, RoundingMode.HALF_UP).toPlainString(),
+                transaction.getAmount().toPlainString(),
                 transaction.getStatus().getDisplayName()
         };
     }

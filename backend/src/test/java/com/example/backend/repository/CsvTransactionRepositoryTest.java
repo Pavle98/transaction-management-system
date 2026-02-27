@@ -136,21 +136,6 @@ class CsvTransactionRepositoryTest {
         }
 
         @Test
-        @DisplayName("normalizes amount to two decimal places in CSV")
-        void normalizesAmountScale() throws IOException {
-            CsvTransactionRepository repo = createRepoWithCsv(
-                    "Transaction Date,Account Number,Account Holder Name,Amount,Status"
-            );
-
-            Transaction transaction = new Transaction(LocalDate.of(2025, 3, 15), "1111-2222-3333", "Jane Doe", new BigDecimal("150"), TransactionStatus.PENDING);
-            repo.save(transaction);
-
-            List<String> lines = Files.readAllLines(tempDir.resolve("test.csv"));
-            String dataLine = lines.get(1);
-            assertTrue(dataLine.contains("150.00"), "Amount should be written as 150.00, got: " + dataLine);
-        }
-
-        @Test
         @DisplayName("written transaction can be read back")
         void roundTrip() throws IOException {
             CsvTransactionRepository repo = createRepoWithCsv(

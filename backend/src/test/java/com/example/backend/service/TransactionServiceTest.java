@@ -79,4 +79,14 @@ class TransactionServiceTest {
         assertEquals(LocalDate.of(2025, 3, 15), result.getTransactionDate());
         assertEquals(new BigDecimal("250.00"), result.getAmount());
     }
+
+    @Test
+    @DisplayName("addTransaction normalizes amount to two decimal places")
+    void normalizesAmountScale() {
+        Transaction result = service.addTransaction(
+                LocalDate.of(2025, 3, 15), "1111-2222-3333", "Jane Doe", new BigDecimal("150")
+        );
+
+        assertEquals(new BigDecimal("150.00"), result.getAmount());
+    }
 }
